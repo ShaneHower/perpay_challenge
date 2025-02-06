@@ -1,0 +1,28 @@
+# There is an issue with python 3.13 and psycopg2, see here - https://github.com/actions/setup-python/issues/864
+FROM python:3.10
+
+# Set up cron
+RUN apt-get update && \
+    apt-get install -y cron && \
+    apt-get install -y dos2unix &&\
+    apt-get clean
+
+COPY cronjob /etc/cron.d/cronjob
+
+# We need to update file permissions and make sure our line endings are compatible with linux. Otherwise the cron jobs won't run
+RUN chmod 0644 /etc/cron.d/cronjob && \
+    crontab /etc/cron.d/cronjob && \
+    dos2unix /etc/cron.d/cronjob
+
+# Set up cronjob files
+ENV CRONJOB_HOME="/usr/src/cron_job"
+WORKDIR $CRONJOB_HOME
+
+COPY requirements.txt ./
+COPY scripts/. "$CRONJOB_HOME/scripts"
+RUN mkdir ./logs
+
+RUN pip install -r requirements.txt
+
+# Run continuously
+CMD ["cron", "-f"]

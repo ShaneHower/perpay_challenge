@@ -1,0 +1,58 @@
+# Use postgres/example user/password credentials
+version: '3.1'
+
+services:
+  app:
+    container_name: load_app
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    image: app
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./logs:/usr/src/app/logs
+    command: ["python", "./scripts/load_data.py"]
+
+  db:
+    container_name: postgres
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: example
+      POSTGRES_DB: perpay
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+    ports:
+      - 5432:5432 # postgres uses port 5432
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+
+  adminer:
+    container_name: adminer
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+
+  cron:
+      container_name: cron_job
+      build:
+        context: .
+        dockerfile: Dockerfile.cron
+      image: cron
+      depends_on:
+        # Really this will also depend on app finishing the load job, however, the query will just fail if the table
+        # doesn't exist. No need to wrestle docker when it will run correctly once there's data.
+        db:
+          condition: service_healthy
+      volumes:
+        - ./logs:/usr/src/cron_job/logs
+
+volumes:
+  postgres-db-volume:

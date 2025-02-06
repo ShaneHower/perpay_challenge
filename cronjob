@@ -1,0 +1,2 @@
+# Run query_db every minute
+* * * * * root /usr/local/bin/python /usr/src/cron_job/scripts/query_db.py >> /usr/src/cron_job/logs/cron.log 2>&1
